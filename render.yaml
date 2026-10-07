@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: yeobaek
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /healthz
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_HOST
+        fromDatabase: {name: yeobaek-db, property: host}
+      - key: DB_PORT
+        fromDatabase: {name: yeobaek-db, property: port}
+      - key: DB_NAME
+        fromDatabase: {name: yeobaek-db, property: database}
+      - key: DB_USER
+        fromDatabase: {name: yeobaek-db, property: user}
+      - key: DB_PASSWORD
+        fromDatabase: {name: yeobaek-db, property: password}
+databases:
+  - name: yeobaek-db
+    plan: free
+    region: singapore
+    databaseName: yeobaek
+    user: yeobaek
