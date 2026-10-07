@@ -19,11 +19,14 @@ document.querySelectorAll('[data-share-path]').forEach(button=>{
 document.querySelectorAll('form').forEach(form=>{
   form.addEventListener('submit',()=>{
     const button=form.querySelector('button[type="submit"]');
-    if(button){button.disabled=true;button.textContent='저장 중…';}
+    if(button){button.dataset.originalLabel=button.textContent;button.dataset.submitted='true';button.disabled=true;button.textContent=button.dataset.busyLabel || '저장 중…';}
   });
 });
 window.addEventListener('pageshow',()=>{
   document.querySelectorAll('button[type="submit"]').forEach(button=>{
-    if(button.disabled){button.disabled=false;button.textContent='저장하고 보기';}
+    if(button.dataset.submitted){button.disabled=false;button.textContent=button.dataset.originalLabel;delete button.dataset.submitted;}
   });
 });
+if(document.querySelector('[data-research-pending]')) {
+  window.setTimeout(()=>window.location.reload(),5000);
+}

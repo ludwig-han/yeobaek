@@ -19,7 +19,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 public class PlanController {
     private final PlanService service;
-    PlanController(PlanService service){this.service=service;}
+    private final ResearchService research;
+    PlanController(PlanService service,ResearchService research){this.service=service;this.research=research;}
     @GetMapping("/") String home(@RequestParam(defaultValue="") String example,Model m){
         PlanForm f="suwon".equals(example)?PlanForm.suwon():new PlanForm();
         if(f.getDate()==null) f.setDate(LocalDate.now(ZoneId.of("Asia/Seoul")));
@@ -33,7 +34,24 @@ public class PlanController {
         return "redirect:/p/"+c.plan().getId();
     }
     @GetMapping("/p/{id}") String view(@PathVariable String id,HttpSession session,Model m){
-        m.addAttribute("plan",service.get(id));m.addAttribute("owner",owns(session,id));return "plan";
+        Plan plan=service.get(id);boolean owner=owns(session,id);
+        m.addAttribute("plan",plan);m.addAttribute("owner",owner);
+        if(owner){
+            m.addAttribute("researchAvailable",research.available());
+            research.latest(id).ifPresent(run->{m.addAttribute("run",run);m.addAttribute("report",research.report(run));m.addAttribute("researchStale",run.isStale(plan));});
+        }
+        return "plan";
+    }
+    @PostMapping("/p/{id}/research") String research(@PathVariable String id,HttpSession session,RedirectAttributes redirect) {
+        if(!owns(session,id))throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        try{research.start(service.get(id));}
+        catch(GeminiResearchClient.ResearchFailure e){redirect.addFlashAttribute("researchError",e.getMessage());}
+        return "redirect:/p/"+id+"#research";
+    }
+    @GetMapping(value="/p/{id}/research/suggestions",produces="text/html;charset=UTF-8")
+    @ResponseBody String suggestions(@PathVariable String id,HttpSession session) {
+        if(!owns(session,id))throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        return research.latest(id).map(run->(String)research.report(run).getOrDefault("searchSuggestions","")).orElse("");
     }
     @GetMapping("/p/{id}/share") String share(@PathVariable String id,Model m){
         m.addAttribute("plan",service.get(id));m.addAttribute("owner",false);return "plan";

@@ -27,7 +27,8 @@ public class PlanService {
     }
     public Plan get(String id){
         if(!id.matches("[A-Za-z0-9_-]{43}")) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        return repository.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND));
+        Plan plan=repository.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND));
+        plan.initializeDetails(); return plan;
     }
     public boolean verifyKey(String id,String key){
         Plan p=get(id);

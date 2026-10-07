@@ -97,4 +97,61 @@ class PlanFlowTest {
         mvc.perform(get("/p/not-a-token")).andExpect(status().isNotFound());
         mvc.perform(get("/p/"+PlanService.token())).andExpect(status().isNotFound());
     }
+
+    @Test void structuredDecisionsPersistAndPrivateOriginsNeverAppearInSharedHtml() throws Exception {
+        MockHttpSession owner=new MockHttpSession();
+        MvcResult r=mvc.perform(post("/plans").session(owner).with(csrf())
+            .param("title","구조화 계획").param("date","2026-10-08")
+            .param("anchors[0].name","행궁 제대로 보기").param("anchors[0].kind","PLACE_VISIT")
+            .param("anchors[0].place","화성행궁").param("anchors[0].placeRule","EXACT")
+            .param("anchors[0].stayMinutes","120").param("anchors[0].stayImportant","YES")
+            .param("candidates[0].name","박물관").param("candidates[0].importance","HIGH")
+            .param("participants[0].label","참여자 A").param("participants[0].origin","비공개 출발역")
+            .param("constraints.maxWaitMinutes","30").param("constraints.fairTravel","true"))
+            .andExpect(status().is3xxRedirection()).andReturn();
+        Plan plan=service.get(id(r));
+        assertThat(plan.getAnchors().get(0).getPlaceRule()).isEqualTo(PlanDetails.PlaceRule.EXACT);
+        assertThat(plan.getAnchors().get(0).getStayMinutes()).isEqualTo(120);
+        assertThat(plan.getConstraints().getMaxWaitMinutes()).isEqualTo(30);
+        assertThat(plan.getConstraints().isFairTravel()).isTrue();
+        mvc.perform(get(path(r)+"/share").session(owner)).andExpect(status().isOk())
+            .andExpect(content().string(containsString("화성행궁")))
+            .andExpect(content().string(not(containsString("비공개 출발역"))))
+            .andExpect(content().string(not(containsString("참여자 A"))));
+        mvc.perform(get(path(r)+"/edit").session(owner)).andExpect(status().isOk())
+            .andExpect(content().string(containsString("비공개 출발역")))
+            .andExpect(content().string(containsString("value=\"120\"")));
+        PlanForm updated=PlanForm.from(plan);updated.getAnchors().get(0).setStayMinutes(90);
+        service.update(id(r),updated);
+        assertThat(service.get(id(r)).getAnchors().get(0).getStayMinutes()).isEqualTo(90);
+        assertThat(service.get(id(r)).getVersion()).isEqualTo(1L);
+    }
+
+    @Test void rejectsRequiredPlaceWithoutNameAndInvalidConstraints() throws Exception {
+        mvc.perform(validPost("/plans").param("anchors[0].placeRule","EXACT"))
+            .andExpect(status().isUnprocessableEntity());
+        mvc.perform(validPost("/plans").param("constraints.maxWaitMinutes","-1"))
+            .andExpect(status().isUnprocessableEntity());
+        mvc.perform(validPost("/plans").param("anchors[0].earliest","18:00").param("anchors[0].latest","10:00"))
+            .andExpect(status().isUnprocessableEntity());
+        mvc.perform(validPost("/plans").param("anchors[0].kind","INVENTED"))
+            .andExpect(status().isUnprocessableEntity());
+        mvc.perform(validPost("/plans").param("anchors[2].name","세 번째 목표"))
+            .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test void keepsDifferentAnchorDecisionsIndependent() throws Exception {
+        MvcResult r=mvc.perform(post("/plans").with(csrf())
+            .param("title","서로 다른 목표").param("date","2026-10-08")
+            .param("anchors[0].name","행궁 관람").param("anchors[0].kind","PLACE_VISIT")
+            .param("anchors[0].place","화성행궁").param("anchors[0].placeRule","EXACT")
+            .param("anchors[1].name","맛있는 식사").param("anchors[1].kind","FOOD")
+            .param("anchors[1].place","로우파이브").param("anchors[1].placeRule","REPLACEABLE"))
+            .andExpect(status().is3xxRedirection()).andReturn();
+        Plan plan=service.get(id(r));
+        assertThat(plan.getAnchors().get(0).getKind()).isEqualTo(PlanDetails.Kind.PLACE_VISIT);
+        assertThat(plan.getAnchors().get(0).getPlaceRule()).isEqualTo(PlanDetails.PlaceRule.EXACT);
+        assertThat(plan.getAnchors().get(1).getKind()).isEqualTo(PlanDetails.Kind.FOOD);
+        assertThat(plan.getAnchors().get(1).getPlaceRule()).isEqualTo(PlanDetails.PlaceRule.REPLACEABLE);
+    }
 }

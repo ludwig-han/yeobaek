@@ -3,4 +3,5 @@ data
 .git
 .idea
 .env
+.env.*
 *.zip

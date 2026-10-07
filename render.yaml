@@ -8,6 +8,14 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        sync: false
+      - key: RESEARCH_ENABLED
+        value: "false"
+      - key: RESEARCH_DAILY_LIMIT
+        value: "3"
       - key: DB_HOST
         fromDatabase: {name: yeobaek-db, property: host}
       - key: DB_PORT
