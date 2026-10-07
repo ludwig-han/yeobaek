@@ -13,7 +13,7 @@ services:
       - key: GEMINI_MODEL
         sync: false
       - key: RESEARCH_ENABLED
-        value: "false"
+        value: "true"
       - key: RESEARCH_DAILY_LIMIT
         value: "3"
       - key: DB_HOST
