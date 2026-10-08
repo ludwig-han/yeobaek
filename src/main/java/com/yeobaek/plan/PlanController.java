@@ -62,11 +62,13 @@ public class PlanController {
         m.addAttribute("form",PlanForm.from(p));m.addAttribute("editing",true);return "form";
     }
     @PostMapping("/p/{id}/unlock") String unlock(@PathVariable String id,@RequestParam String editKey,
-            HttpSession session,Model m,HttpServletResponse response){
+            @RequestParam(defaultValue="false") boolean viewPlan,
+            HttpSession session,Model m,HttpServletResponse response,RedirectAttributes redirect){
         if(!service.verifyKey(id,editKey)){
             response.setStatus(403);m.addAttribute("plan",service.get(id));m.addAttribute("wrongKey",true);return "unlock";
         }
-        grant(session,id);return "redirect:/p/"+id+"/edit";
+        grant(session,id);redirect.addFlashAttribute("rememberEditKey",editKey);
+        return "redirect:/p/"+id+(viewPlan ? "" : "/edit");
     }
     @PostMapping("/p/{id}") String update(@PathVariable String id,@Valid @ModelAttribute("form") PlanForm form,
             BindingResult errors,HttpSession session,Model m,HttpServletResponse response,RedirectAttributes redirect){

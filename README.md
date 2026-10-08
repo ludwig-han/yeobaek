@@ -6,7 +6,7 @@ Java 17 · Spring Boot 3.5.16 · Thymeleaf · JPA · Flyway.
 2026-10-08 로컬 검증: Maven 3.9.11 / Java 21.0.9에서 `verify` 성공, 24개 테스트 통과(컴파일 대상 Java 17).
 실제 파일 H2 마이그레이션·앱 실행·브라우저 생성/수정/공유를 확인했습니다.
 내장 브라우저의 실제 폭은 705px로 유지되어 390px 모바일 실측 검증은 완료하지 못했습니다. 모바일 CSS는 유지합니다.
-Java 17 런타임, Docker, 실제 PostgreSQL, 공개 배포는 아직 별도 검증이 필요합니다.
+Render 배포 완료(사용자 확인), 공개 주소: https://yeobaek.onrender.com/ . 운영 환경의 생성·조사·공유·재시작 후 데이터 유지 검증은 별도로 기록합니다.
 Gemini Interactions 기반 브라우저 조사 1회(검색 + 도구 없는 JSON 추출) 성공: 출처 9개, 검색어 3개, 충돌·미확인 표시, 새로고침 후 저장 결과 유지, 웨이팅 60→45분 수정 후 재조사 필요 표시를 확인했습니다.
 
 ## 로컬 실행
@@ -92,14 +92,14 @@ $env:RESEARCH_ENABLED = 'true'         # 결제/한도 준비 후에만
 
 ## Render / PostgreSQL
 
-GitHub 저장소를 만든 뒤 이 프로젝트를 push하고 Render Blueprint에서 `render.yaml`을 연결합니다.
-현재 로컬 Git에는 원격이 등록되어 있지 않습니다. 이 저장소만으로 공개 URL이 자동 발급되지는 않습니다.
+GitHub 저장소: https://github.com/ludwig-han/yeobaek . Render 공개 주소: https://yeobaek.onrender.com/ .
+재구성 시 Render Blueprint에서 `render.yaml`을 연결합니다. 실제 배포 브랜치와 환경변수는 Render 설정에서 확인합니다.
 
 - Docker 빌드 단계에서 Java 17로 `mvn -B verify` 실행, 실행 JAR은 `target/app.jar`.
 - `SPRING_PROFILES_ACTIVE=prod` 필수.
 - `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` 필수. `DB_PORT` 기본 5432. Blueprint에서 DB로부터 주입.
 - `GEMINI_API_KEY`, `GEMINI_MODEL`은 Render 환경변수에 직접 설정. 키를 YAML에 적지 않습니다.
-- 결제·할당량 준비 후 `RESEARCH_ENABLED=true`. 기본 false에서도 앱은 정상 실행됩니다.
+- 애플리케이션의 `RESEARCH_ENABLED` 기본값은 false지만 현재 Blueprint는 true로 설정돼 있습니다. Gemini 키·모델·결제·할당량을 준비해야 조사가 동작합니다.
 - 프로덕션은 Secure 세션 쿠키를 사용하므로 HTTPS로 접속합니다.
 - `/healthz`는 HTTP 생존 확인이며 DB나 Gemini 상태를 검사하지 않습니다.
 - Render 무료 플랜 제공/DB 보존 기간은 배포 시 계정 화면에서 확인하세요. 임의로 유료 전환하지 않습니다.
@@ -124,3 +124,13 @@ ResearchFlowTest: 조사 권한·저장·stale·개인 결과 비공개·실패 
 - Anchor/웨이팅 수정 후 재조사 필요 표시 확인.
 - 서버 재시작 후 계획과 결과 유지, 수정 키로 편집 복구 확인.
 - 실제 PostgreSQL과 Gemini Search grounding 성공은 별도 검증 필요.
+
+## 내 계획 (같은 브라우저)
+
+홈의 ‘내 계획’에 직접 생성하거나 올바른 수정 키로 연 계획이 남습니다. 지난 계획도 유지되며, 계획자 화면을 다시 열면 제목·날짜·지역이 갱신됩니다. 공유 화면을 보는 것만으로는 목록에 추가되지 않습니다.
+
+계획 본문은 서버 DB에, 목록과 수정 키는 해당 사이트의 브라우저 localStorage에 저장합니다. 목록에서 열 때 CSRF가 적용된 POST로 서버가 키를 확인하고 새 세션에 수정 권한을 복구합니다. 키는 URL에 넣지 않습니다. 서버는 키의 해시만 DB에 저장합니다.
+
+브라우저 데이터 삭제·시크릿 모드 종료·기기 변경 시 목록이 이어지지 않습니다. 계획 주소와 수정 키를 따로 보관하세요. 기존 계획은 주소의 ‘수정 키로 열기’에서 복구하면 목록에 추가됩니다. 공용 브라우저에서는 보관된 키로 다른 사용자가 수정할 수 있습니다. 저장소가 차단되거나 가득 차면 안내를 표시하며 서버의 계획 저장은 유지됩니다. 도메인이 달라지면 별도 목록입니다.
+
+2026-10-08 내 계획 검증: `mvn -B verify` 25개 테스트 통과. 로컬 파일 H2와 실제 브라우저에서 지역 없는 계획 생성, 목록 표시, 서버 재시작 후 목록에서 수정 권한 복구, 제목 변경 후 목록 갱신을 확인했습니다. 이 변경은 아직 Render에 배포하지 않았습니다.

@@ -1,6 +1,8 @@
 <!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>계획의 뼈대 · 여백</title><link rel="stylesheet" href="/app.css"><script defer src="/app.js"></script></head>
 <body><header class="topbar"><a class="brand" href="/">여백<span>하루 계획</span></a><span class="edition">v0.1</span></header><main class="editor">
+<section th:unless="${editing}" th:insert="~{library :: list}"></section>
+<div th:if="${editing}" th:insert="~{library :: remember}"></div>
 <div class="heading"><p class="eyebrow">결정은 내가, 조사는 AI에게</p><h1 th:text="${editing ? '중요한 것을 다시 살펴요.' : '무엇을 지키고 싶은 하루인가요?'}"></h1><p class="muted">핵심 목표 하나부터. 아직 정하지 않은 조건은 미정으로 두세요.</p></div>
 <a th:unless="${editing}" class="example" href="/?example=suwon">10월 8일 수원 계획으로 시작하기 <span>입력 예시 불러오기</span></a>
 <form method="post" th:action="${editing ? '/p/' + plan.id : '/plans'}" th:object="${form}">

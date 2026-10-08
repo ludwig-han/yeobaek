@@ -2,3 +2,6 @@
 
 select{display:block;width:100%;min-width:0;font:inherit;padding:11px 10px;margin:7px 0 20px;border:1px solid #b9c6d5;border-radius:9px;background:white;color:#172636}select:focus{outline:3px solid #d5e2ff;border-color:var(--blue)}fieldset{border:1px solid var(--line);border-radius:9px;margin:16px 0;padding:14px}legend{font-weight:600}.check{display:flex;align-items:center;gap:10px;margin:8px 0}.check input{width:auto;margin:0}.item-editor{border-top:1px solid var(--line);padding:14px 0}h3{font-size:1rem;margin:12px 0}.card>details{border-top:1px solid var(--line);padding:13px 0}.facts{display:flex;gap:7px;flex-wrap:wrap;padding:0;list-style:none}.facts li{background:#eaf0fa;border-radius:6px;padding:3px 8px;font-size:.85rem}.research-item{border-top:1px solid var(--line);padding:14px 0}.research-item a{overflow-wrap:anywhere}.research-status{font-size:.9rem}.source-list{padding-left:20px}.source-list li{margin:8px 0}
 .search-suggestions{width:100%;min-height:110px;border:0;margin-top:15px}
+.library-item {padding:1rem 0;border-top:1px solid #dedbd3;}
+.library-item h3 {overflow-wrap:anywhere;}
+.library-item form {margin:0;}

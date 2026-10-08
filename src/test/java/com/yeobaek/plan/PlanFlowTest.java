@@ -39,6 +39,26 @@ class PlanFlowTest {
         mvc.perform(get("/").param("example","suwon")).andExpect(status().isOk())
             .andExpect(content().string(containsString("화성행궁"))).andExpect(content().string(containsString("확인 필요")));
     }
+    @Test void browserLibraryRestoresFreshSessionAndNeverRemembersSharedPlans() throws Exception {
+        MvcResult created=create(new MockHttpSession());
+        String key=(String)created.getFlashMap().get("newEditKey");
+        MockHttpSession fresh=new MockHttpSession();
+        mvc.perform(post(path(created)+"/unlock").param("editKey",key).param("viewPlan","true"))
+            .andExpect(status().isForbidden());
+        mvc.perform(post(path(created)+"/unlock").with(csrf()).param("editKey","wrong").param("viewPlan","true"))
+            .andExpect(status().isForbidden()).andExpect(flash().attributeCount(0));
+        MvcResult restored=mvc.perform(post(path(created)+"/unlock").session(fresh).with(csrf())
+            .param("editKey",key).param("viewPlan","true"))
+            .andExpect(redirectedUrl(path(created))).andExpect(flash().attribute("rememberEditKey",key)).andReturn();
+        mvc.perform(get(path(created)).session(fresh).flashAttrs(restored.getFlashMap()))
+            .andExpect(status().isOk()).andExpect(content().string(containsString("data-remember-plan")))
+            .andExpect(content().string(containsString("data-key=\""+key+"\"")));
+        mvc.perform(get(path(created)+"/share").session(fresh))
+            .andExpect(content().string(not(containsString("data-remember-plan"))))
+            .andExpect(content().string(not(containsString(key))));
+        mvc.perform(get(path(created))).andExpect(content().string(not(containsString("data-remember-plan"))));
+        mvc.perform(get("/")).andExpect(content().string(containsString("library-open-form")));
+    }
     @Test void createsPersistsAndSharesWithoutPrivateTransportOrKey() throws Exception{
         MockHttpSession owner=new MockHttpSession();MvcResult r=create(owner);
         String key=(String)r.getFlashMap().get("newEditKey");
