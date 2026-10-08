@@ -56,6 +56,8 @@
   document.querySelectorAll('[data-clear-time]').forEach(button => button.addEventListener('click', () => {
     const input = button.parentElement.querySelector('input');
     input.value = '';
+    input.dispatchEvent(new Event('input', {bubbles:true}));
+    input.dispatchEvent(new Event('time-cleared'));
     const section = input.closest('[data-anchor-times]');
     if (section && [...section.querySelectorAll('[data-time-input]')].every(i => !i.value)) {
       const rule = section.querySelector('select[name$=".timeSensitive"]');
