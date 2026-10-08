@@ -20,7 +20,7 @@ public class ResearchService {
     private final ExecutorService worker=Executors.newSingleThreadExecutor(r->{Thread t=new Thread(r,"plan-research");t.setDaemon(true);return t;});
     private boolean busy;
     public ResearchService(ResearchRunRepository runs,GeminiResearchClient client,ObjectMapper mapper,
-            @Value("${research.daily-limit:3}") int dailyLimit){this.runs=runs;this.client=client;this.mapper=mapper;this.dailyLimit=dailyLimit;}
+            @Value("${research.daily-limit:10}") int dailyLimit){this.runs=runs;this.client=client;this.mapper=mapper;this.dailyLimit=dailyLimit;}
     public boolean available(){return client.available();}
     public Optional<ResearchRun> latest(String id) {
         Optional<ResearchRun> run=runs.findFirstByPlanIdOrderByStartedAtDesc(id);

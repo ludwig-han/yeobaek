@@ -62,7 +62,7 @@ Windows에서 Maven/Java가 PATH에 없으면 IntelliJ의 Bundled Maven으로 `v
 | `GEMINI_API_KEY` | 없음 | 서버 전용 Gemini 프로젝트 키 |
 | `GEMINI_MODEL` | 없음 | 프로젝트에서 실제 사용 가능한 Gemini 3.x 모델 ID |
 | `RESEARCH_ENABLED` | `false` | 결제·할당량 확인 후 `true`로 활성화 |
-| `RESEARCH_DAILY_LIMIT` | `3` | 서버의 하루 조사 요청 수, 서울 날짜 기준 |
+| `RESEARCH_DAILY_LIMIT` | `10` | 서버 전체의 하루 조사 요청 수, 서울 날짜 기준 |
 | `PORT` | `8080` | HTTP 포트 |
 
 2026-10-08 실제 모델 목록에서 `gemini-3.8-flash`를 확인했습니다. 모델 기본값은 하드코딩하지 않습니다.

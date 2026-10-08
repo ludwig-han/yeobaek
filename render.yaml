@@ -15,7 +15,7 @@ services:
       - key: RESEARCH_ENABLED
         value: "true"
       - key: RESEARCH_DAILY_LIMIT
-        value: "3"
+        value: "10"
       - key: DB_HOST
         fromDatabase: {name: yeobaek-db, property: host}
       - key: DB_PORT
