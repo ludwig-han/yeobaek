@@ -54,6 +54,11 @@ public class ResearchService {
         ObjectNode input=mapper.createObjectNode();input.put("title",p.getTitle());input.put("date",p.getDate().toString());input.put("region",p.getRegion());
         input.put("checkedAt",Instant.now().toString());input.set("anchors",mapper.valueToTree(p.getAnchors()));
         input.set("priorities",mapper.valueToTree(p.getCandidates()));input.set("guardrailAndTransport",mapper.valueToTree(p.getConstraints()));
+        input.path("priorities").forEach(n -> ((ObjectNode)n).remove("importance"));
+        ObjectNode conditions=(ObjectNode)input.get("guardrailAndTransport");
+        conditions.remove("avoidLateReturn");
+        if(p.getConstraints().getReturnMode()!=PlanDetails.ReturnMode.BY_TIME)conditions.remove("returnBy");
+        if(p.getConstraints().getReturnMode()!=PlanDetails.ReturnMode.LAST_TRAIN)conditions.remove("returnDestination");
         // Anonymize participants; never send edit credentials or old private free-form notes.
         input.set("departureStations",mapper.valueToTree(p.getParticipants().stream().map(PlanDetails.Participant::getOrigin).toList()));
         input.put("flexible",p.getFlexible());return input;

@@ -5,3 +5,4 @@ select{display:block;width:100%;min-width:0;font:inherit;padding:11px 10px;margi
 .library-item {padding:1rem 0;border-top:1px solid #dedbd3;}
 .library-item h3 {overflow-wrap:anywhere;}
 .library-item form {margin:0;}
+.time-error {display:block;color:#a12622;font-size:.9rem;} [hidden] {display:none !important;} [data-time-input] {max-width:12rem;}

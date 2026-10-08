@@ -26,11 +26,14 @@ public final class PlanDetails {
     public enum MeetingStyle { UNKNOWN("미정"), TOGETHER("같이 출발"), MIDWAY("중간에서 합류"), ON_SITE("현지에서 만나도 됨");
         private final String label; MeetingStyle(String label){this.label=label;} public String getLabel(){return label;}
     }
-    public enum Walking { UNKNOWN("미정"), LOW("걷기 적게"), MEDIUM("적당히"), HIGH("많이 걸어도 괜찮음");
+    public enum Walking { UNKNOWN("미정"), REDUCE("도보 이동을 줄이고 싶어요"), LOW("기존 선택: 걷기 적게"), MEDIUM("기존 선택: 적당히"), HIGH("기존 선택: 많이 걸어도 괜찮음");
         private final String label; Walking(String label){this.label=label;} public String getLabel(){return label;}
     }
     public enum Weather { UNKNOWN("미정"), LOW("날씨 영향 적음"), HIGH("비·더위에 민감");
         private final String label; Weather(String label){this.label=label;} public String getLabel(){return label;}
+    }
+    public enum ReturnMode { UNKNOWN("미정"), BY_TIME("정한 시각까지 귀가"), LAST_TRAIN("막차를 놓치지 않고 귀가");
+        private final String label; ReturnMode(String label){this.label=label;} public String getLabel(){return label;}
     }
     @Embeddable
     public static class Anchor {
@@ -72,8 +75,10 @@ public final class PlanDetails {
         public String getNote(){return note;} public void setNote(String value){note=value;}
         @AssertTrue(message="필수 장소의 이름을 적어주세요.")
         public boolean isPlaceValid(){return name==null || name.isBlank() || placeRule!=PlaceRule.EXACT || (place!=null && !place.isBlank());}
-        @AssertTrue(message="시간 범위는 시작보다 끝이 늦어야 합니다.")
-        public boolean isTimeValid(){return (timeSensitive!=TimeRule.FIXED_TIME || earliest!=null || latest!=null) && (earliest==null || latest==null || earliest.isBefore(latest)) && (timeSensitive!=TimeRule.NONE || (earliest==null && latest==null));}
+        @AssertTrue(message="목표의 종료 시각은 시작 시각보다 늦어야 합니다. 같은 날의 24시간제로 입력해주세요.")
+        public boolean isTimeValid(){return name==null || name.isBlank() || earliest==null || latest==null || earliest.isBefore(latest);}
+        @AssertTrue(message="특정 시각을 선택한 목표에는 시작 또는 종료 시각을 입력해주세요.")
+        public boolean isFixedTimePresent(){return name==null || name.isBlank() || timeSensitive!=TimeRule.FIXED_TIME || earliest!=null || latest!=null;}
     }
     @Embeddable
     public static class Candidate {
@@ -114,6 +119,9 @@ public final class PlanDetails {
         @Column(name="low_cost")  private boolean lowCost=false;
         @Column(name="fair_travel")  private boolean fairTravel=false;
         @Column(name="walking", length=30) @Enumerated(EnumType.STRING) @NotNull private Walking walking=Walking.UNKNOWN;
+        @Column(name="walking_note", length=300) @Size(max=300) private String walkingNote="";
+        @Column(name="return_mode", length=30) @Enumerated(EnumType.STRING) @NotNull private ReturnMode returnMode=ReturnMode.UNKNOWN;
+        @Column(name="return_destination", length=150) @Size(max=150) private String returnDestination="";
         @Column(name="max_wait_minutes") @Min(0) @Max(300) private Integer maxWaitMinutes=null;
         @Column(name="avoid_late_return", length=30) @Enumerated(EnumType.STRING) @NotNull private Choice avoidLateReturn=Choice.UNKNOWN;
         @Column(name="return_by") @DateTimeFormat(pattern="HH:mm")  private LocalTime returnBy=null;
@@ -128,6 +136,9 @@ public final class PlanDetails {
             this.lowCost=other.lowCost;
             this.fairTravel=other.fairTravel;
             this.walking=other.walking;
+            this.walkingNote=other.walkingNote;
+            this.returnMode=other.returnMode;
+            this.returnDestination=other.returnDestination;
             this.maxWaitMinutes=other.maxWaitMinutes;
             this.avoidLateReturn=other.avoidLateReturn;
             this.returnBy=other.returnBy;
@@ -141,6 +152,11 @@ public final class PlanDetails {
         public boolean isLowCost(){return lowCost;} public void setLowCost(boolean value){lowCost=value;}
         public boolean isFairTravel(){return fairTravel;} public void setFairTravel(boolean value){fairTravel=value;}
         public Walking getWalking(){return walking;} public void setWalking(Walking value){walking=value;}
+        public String getWalkingNote(){return walkingNote;} public void setWalkingNote(String value){walkingNote=value;}
+        public ReturnMode getReturnMode(){return returnMode;} public void setReturnMode(ReturnMode value){returnMode=value;}
+        public String getReturnDestination(){return returnDestination;} public void setReturnDestination(String value){returnDestination=value;}
+        @AssertTrue(message="시각까지 귀가를 선택했다면 귀가 시각을 입력해주세요. 정하지 않았다면 미정을 선택해주세요.")
+        public boolean isReturnTimePresent(){return returnMode!=ReturnMode.BY_TIME || returnBy!=null;}
         public Integer getMaxWaitMinutes(){return maxWaitMinutes;} public void setMaxWaitMinutes(Integer value){maxWaitMinutes=value;}
         public Choice getAvoidLateReturn(){return avoidLateReturn;} public void setAvoidLateReturn(Choice value){avoidLateReturn=value;}
         public LocalTime getReturnBy(){return returnBy;} public void setReturnBy(LocalTime value){returnBy=value;}

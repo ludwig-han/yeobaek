@@ -1,0 +1,4 @@
+ALTER TABLE plans ADD COLUMN walking_note VARCHAR(300) DEFAULT '';
+ALTER TABLE plans ADD COLUMN return_mode VARCHAR(30) DEFAULT 'UNKNOWN';
+ALTER TABLE plans ADD COLUMN return_destination VARCHAR(150) DEFAULT '';
+UPDATE plans SET return_mode = 'BY_TIME' WHERE return_by IS NOT NULL;

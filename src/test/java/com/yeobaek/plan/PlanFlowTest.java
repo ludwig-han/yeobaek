@@ -117,6 +117,36 @@ class PlanFlowTest {
         mvc.perform(get("/p/not-a-token")).andExpect(status().isNotFound());
         mvc.perform(get("/p/"+PlanService.token())).andExpect(status().isNotFound());
     }
+    @Test void eveningTimesAndUnusedAnchorDoNotTriggerMisleadingRangeError() throws Exception {
+        mvc.perform(validPost("/plans").param("anchors[0].timeSensitive","NONE")
+            .param("anchors[0].earliest","19:30").param("anchors[0].latest","23:33")
+            .param("anchors[1].timeSensitive","FIXED_TIME"))
+            .andExpect(status().is3xxRedirection());
+        mvc.perform(validPost("/plans").param("anchors[0].earliest","23:33").param("anchors[0].latest","19:30"))
+            .andExpect(status().isUnprocessableEntity());
+        mvc.perform(validPost("/plans").param("anchors[0].timeSensitive","FIXED_TIME"))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(content().string(containsString("시작 또는 종료 시각")));
+        mvc.perform(validPost("/plans").param("anchors[0].earliest","").param("anchors[0].latest",""))
+            .andExpect(status().is3xxRedirection());
+    }
+    @Test void lastTrainAndWalkingPreferencesPersistWithoutSharingDestination() throws Exception {
+        MockHttpSession owner=new MockHttpSession();
+        MvcResult r=mvc.perform(validPost("/plans").session(owner)
+            .param("constraints.returnMode","LAST_TRAIN").param("constraints.returnDestination","비공개 귀가역")
+            .param("constraints.walking","REDUCE").param("constraints.walkingNote","하루 1만 보 이내"))
+            .andExpect(status().is3xxRedirection()).andReturn();
+        Plan p=service.get(id(r));
+        assertThat(p.getConstraints().getReturnMode()).isEqualTo(PlanDetails.ReturnMode.LAST_TRAIN);
+        assertThat(p.getConstraints().getWalkingNote()).isEqualTo("하루 1만 보 이내");
+        mvc.perform(get(path(r)).session(owner)).andExpect(content().string(containsString("비공개 귀가역")));
+        mvc.perform(get(path(r)+"/share")).andExpect(content().string(not(containsString("비공개 귀가역"))))
+            .andExpect(content().string(containsString("막차를 놓치지 않고 귀가")));
+        mvc.perform(validPost("/plans").param("constraints.returnMode","BY_TIME"))
+            .andExpect(status().isUnprocessableEntity());
+        mvc.perform(validPost("/plans").param("constraints.returnMode","BY_TIME").param("constraints.returnBy","23:33"))
+            .andExpect(status().is3xxRedirection());
+    }
 
     @Test void structuredDecisionsPersistAndPrivateOriginsNeverAppearInSharedHtml() throws Exception {
         MockHttpSession owner=new MockHttpSession();
