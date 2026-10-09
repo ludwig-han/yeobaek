@@ -101,7 +101,7 @@
   if(second) collapseContents(second,'중요한 것 하나 더 · 선택',hasValue(second));
   form.querySelectorAll('[data-optional-section]').forEach(section=>{
     const title=section.querySelector('h2').textContent;
-    collapseContents(section,title+' · 추가로 정하기',hasValue(section));
+    collapseContents(section,title,hasValue(section));
   });
   form.querySelectorAll('[data-anchor-times] > details').forEach(details=>{
     details.open=hasValue(details);
@@ -131,3 +131,4 @@
     }
   },true);
 })();
+

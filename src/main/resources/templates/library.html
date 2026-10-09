@@ -2,12 +2,13 @@
 <section th:fragment="list" class="card" id="my-plans">
   <h2>내 계획</h2>
   <p class="hint">이 브라우저에서 저장하거나 수정 키로 연 계획입니다. 지난 계획도 남아 있어요.</p>
-  <p class="hint">계획 내용은 서버에 저장됩니다. 이 브라우저에는 목록과 수정 키를 보관해요. 공용 기기에서는 주의하고, 브라우저 데이터를 지우기 전에 수정 키를 따로 보관해주세요.</p>
-  <p data-library-empty>아직 저장한 계획이 없어요. 아래에서 첫 계획을 만들어보세요.</p>
-  <p data-library-error class="notice error" role="status" hidden>브라우저 저장소를 사용할 수 없어요. 계획 주소와 수정 키를 따로 보관해주세요.</p>
+  <details class="library-help"><summary>저장 방식 안내</summary><p class="hint">계획 내용은 서버에 저장됩니다. 이 브라우저에는 목록과 수정 키를 보관해요. 공용 기기에서는 주의하고, 브라우저 데이터를 지우기 전에 수정 키를 따로 보관해주세요.</p></details>
+  <p data-library-empty>아직 저장한 계획이 없어요. 위에서 첫 계획을 만들어보세요.</p>
+  <p data-library-error class="notice error" role="status" hidden>브라우저 저장소를 사용할 수 없어요. 계획 주소와 수정 키를 따로 보관해주세요.</p></details>
   <div data-library-list></div>
   <template id="library-open-form"><form method="post"><input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"><input type="hidden" name="editKey"><input type="hidden" name="viewPlan" value="true"><button type="submit">계획 열기</button></form></template>
   <noscript>내 계획 목록을 보려면 JavaScript가 필요합니다. 기존 계획은 주소와 수정 키로 열 수 있어요.</noscript>
 </section>
 <div th:fragment="remember" hidden data-remember-plan th:attr="data-id=${plan.id},data-title=${plan.title},data-date=${plan.date},data-region=${plan.region},data-key=${newEditKey ?: rememberEditKey}"></div>
 </body></html>
+
