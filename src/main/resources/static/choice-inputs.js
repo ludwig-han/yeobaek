@@ -46,16 +46,6 @@
     sync();
     return select;
   }
-  const goalKinds = {
-    '맛있는 음식 먹기':'FOOD', '장소를 여유 있게 관람하기':'PLACE_VISIT',
-    '쇼핑하기':'SHOPPING', '활동·체험 즐기기':'ACTIVITY', '산책하며 쉬기':'ACTIVITY'
-  };
-  for (let i = 0; i < 2; i++) {
-    choices(field(`anchors[${i}].name`), `${i+1}번째 중요한 목표`, Object.keys(goalKinds).map(v=>[v,v]),
-      i === 0 ? '중요한 목표를 골라주세요' : '추가 목표 없음', value => {
-        if (goalKinds[value]) { field(`anchors[${i}].kind`).value = goalKinds[value]; change(field(`anchors[${i}].kind`)); }
-      });
-  }
   choices(field('region'), '어디로 가나요?', ['서울','수원','인천','부산','제주','강릉','경주','전주','대전','대구','광주'].map(v=>[v,v]));
   for (let i = 0; i < 6; i++) {
     const kinds = {'카페':'FOOD','박물관':'PLACE_VISIT','미술관':'PLACE_VISIT','가챠샵':'SHOPPING','소품샵':'SHOPPING','산책':'ACTIVITY'};
@@ -74,7 +64,7 @@
   }
   form.querySelectorAll('[data-time-input]').forEach(input => {
     const label = input.name.includes('returnBy') ? '귀가 시각 선택' :
-      `${input.name.includes('[0]') ? '첫 번째' : '두 번째'} 목표 ${input.name.endsWith('earliest') ? '시작' : '종료'} 시각 선택`;
+      `${input.name.includes('[0]') ? '첫 번째' : '두 번째'} 목표 ${input.name.endsWith('fixedTime') ? '정해진' : input.name.endsWith('earliest') ? '기존 시작' : '기존 종료'} 시각 선택`;
     choices(input, label, times);
   });
   function collapseContents(section, summaryText, open) {
@@ -88,15 +78,6 @@
   }
   const hasValue = node => [...node.querySelectorAll('input:not([type="hidden"]),textarea,select:not([data-choice-for])')]
     .some(input => input.type==='checkbox' ? input.checked : input.value && input.value!=='UNKNOWN');
-  form.querySelectorAll('[data-anchor-times]').forEach(section=>{
-    const typeAndRule=section.querySelector('.two-cols');
-    const placeLabel=section.querySelector('input[name$=".place"]').parentElement;
-    const details=document.createElement('details');
-    const summary=document.createElement('summary');summary.textContent='장소·유형 정하기 · 선택';
-    details.append(summary);
-    details.open=Boolean(placeLabel.querySelector('input').value) || section.querySelector('select[name$=".placeRule"]').value!=='UNKNOWN';
-    typeAndRule.before(details);details.append(typeAndRule,placeLabel);
-  });
   const second=form.querySelectorAll('[data-anchor-times]')[1];
   if(second) collapseContents(second,'중요한 것 하나 더 · 선택',hasValue(second));
   form.querySelectorAll('[data-optional-section]').forEach(section=>{
@@ -131,4 +112,3 @@
     }
   },true);
 })();
-

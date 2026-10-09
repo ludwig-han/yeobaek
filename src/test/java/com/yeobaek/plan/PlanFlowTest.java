@@ -21,6 +21,48 @@ class PlanFlowTest {
     @Autowired PlanService service;
     @Autowired PlanRepository repository;
 
+    @Test void v02FixedTimeAndEssentialPlacePersistWithoutClassification() throws Exception {
+        MockHttpSession owner=new MockHttpSession();
+        MvcResult r=mvc.perform(validPost("/plans").session(owner).param("anchors[0].place","예약한 식당")
+            .param("anchors[0].placeEssential","true").param("anchors[0].placeRule","UNKNOWN")
+            .param("anchors[0].fixedTime","18:30"))
+            .andExpect(status().is3xxRedirection()).andReturn();
+        PlanDetails.Anchor a=service.get(id(r)).getAnchors().get(0);
+        assertThat(a.getFixedTime()).isEqualTo(java.time.LocalTime.of(18,30));
+        assertThat(a.getPlaceRule()).isEqualTo(PlanDetails.PlaceRule.EXACT);
+        assertThat(a.getKind()).isEqualTo(PlanDetails.Kind.UNKNOWN);
+        mvc.perform(get(path(r)+"/share")).andExpect(content().string(containsString("정해진 시각 · 18:30")));
+        mvc.perform(validPost(path(r)).session(owner).param("anchors[0].place","예약한 식당")
+            .param("_anchors[0].placeEssential","on").param("anchors[0].placeRule","EXACT").param("anchors[0].fixedTime",""))
+            .andExpect(status().is3xxRedirection());
+        a=service.get(id(r)).getAnchors().get(0);
+        assertThat(a.getFixedTime()).isNull();assertThat(a.getPlaceRule()).isEqualTo(PlanDetails.PlaceRule.REPLACEABLE);
+        mvc.perform(validPost("/plans").param("anchors[0].fixedTime","25:00")).andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test void v02LimitsNewCandidatesButPreservesSixLegacyCandidatesAndTimes() throws Exception {
+        var request=validPost("/plans");for(int i=0;i<4;i++)request.param("candidates["+i+"].name","후보"+i);
+        mvc.perform(request).andExpect(status().isUnprocessableEntity());
+        mvc.perform(get("/")).andExpect(content().string(not(containsString("candidates[3].name"))))
+            .andExpect(content().string(not(containsString("시간 제약이 있나요?"))))
+            .andExpect(content().string(not(containsString("anchors[0].earliest"))));
+        PlanForm f=PlanForm.suwon();
+        while(f.getCandidates().size()<6){var c=new PlanDetails.Candidate();c.setName("기존 후보"+f.getCandidates().size());f.getCandidates().add(c);}
+        f.getAnchors().get(0).setEarliest(java.time.LocalTime.of(19,30));f.getAnchors().get(0).setLatest(java.time.LocalTime.of(23,33));
+        var created=service.create(f);String path="/p/"+created.plan().getId();MockHttpSession owner=new MockHttpSession();
+        mvc.perform(post(path+"/unlock").session(owner).with(csrf()).param("editKey",created.editKey())).andExpect(status().is3xxRedirection());
+        mvc.perform(get(path+"/edit").session(owner)).andExpect(status().isOk())
+            .andExpect(content().string(containsString("candidates[5].name")))
+            .andExpect(content().string(containsString("이전에 저장한 시간 조건")));
+        var update=validPost(path).session(owner).param("anchors[0].earliest","19:30").param("anchors[0].latest","23:33");
+        for(int i=0;i<6;i++)update.param("candidates["+i+"].name",f.getCandidates().get(i).getName());
+        mvc.perform(update).andExpect(status().is3xxRedirection());
+        Plan saved=service.get(created.plan().getId());assertThat(saved.getCandidates()).hasSize(6);
+        assertThat(saved.getAnchors().get(0).getEarliest()).isEqualTo(java.time.LocalTime.of(19,30));
+        assertThat(saved.getAnchors().get(0).getLatest()).isEqualTo(java.time.LocalTime.of(23,33));
+        assertThat(saved.getAnchors().get(0).getFixedTime()).isNull();
+    }
+
     private MockHttpServletRequestBuilder validPost(String path){
         return post(path).with(csrf()).param("title","수원에서 보내는 하루").param("date","2026-10-08")
             .param("region","수원").param("anchor1","화성행궁 충분히 보기").param("anchor2","")

@@ -6,6 +6,19 @@ import java.sql.DriverManager;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class MigrationTest {
+    @Test void v5KeepsLegacyRangesAndDoesNotInventReservationTimes() throws Exception {
+        String url="jdbc:h2:mem:migrationV5;DB_CLOSE_DELAY=-1";
+        Flyway.configure().dataSource(url,"sa","").target("4").load().migrate();
+        try(var c=DriverManager.getConnection(url,"sa","");var s=c.createStatement()) {
+            s.execute("INSERT INTO plans(id,edit_key_hash,title,plan_date,region,anchor1,anchor2,meeting,transport,priorities,guardrails,backup,flexible,created_at,updated_at,version) VALUES ('"+"e".repeat(43)+"','"+"f".repeat(64)+"','기존',DATE '2026-10-08','','목표','','','','','','','',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,0)");
+            s.execute("INSERT INTO plan_anchors(plan_id,position,goal_name,earliest,latest,time_sensitive) VALUES ('"+"e".repeat(43)+"',0,'식사',TIME '19:30:00',TIME '23:33:00','FIXED_TIME')");
+        }
+        Flyway.configure().dataSource(url,"sa","").load().migrate();
+        try(var c=DriverManager.getConnection(url,"sa","");var s=c.createStatement();var r=s.executeQuery("SELECT earliest,latest,fixed_time FROM plan_anchors")) {
+            r.next();assertThat(r.getTime(1).toLocalTime()).isEqualTo(java.time.LocalTime.of(19,30));
+            assertThat(r.getTime(2).toLocalTime()).isEqualTo(java.time.LocalTime.of(23,33));assertThat(r.getTime(3)).isNull();
+        }
+    }
     @Test void upgradesV3KeepingExistingReturnAndStayPreferences() throws Exception {
         String url="jdbc:h2:mem:migrationV4;DB_CLOSE_DELAY=-1";
         Flyway.configure().dataSource(url,"sa","").target("3").load().migrate();

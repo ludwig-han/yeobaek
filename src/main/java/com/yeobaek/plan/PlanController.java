@@ -28,6 +28,7 @@ public class PlanController {
     }
     @PostMapping("/plans") String create(@Valid @ModelAttribute("form") PlanForm form,BindingResult errors,
             HttpSession session,Model m,RedirectAttributes redirect,HttpServletResponse response){
+        validateCandidateCount(form,3,errors);
         if(errors.hasErrors()){response.setStatus(422);m.addAttribute("editing",false);return "form";}
         PlanService.Created c=service.create(form);grant(session,c.plan().getId());
         redirect.addFlashAttribute("newEditKey",c.editKey());
@@ -74,6 +75,7 @@ public class PlanController {
             BindingResult errors,HttpSession session,Model m,HttpServletResponse response,RedirectAttributes redirect){
         if(!owns(session,id))throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         m.addAttribute("plan",service.get(id));m.addAttribute("editing",true);
+        validateCandidateCount(form,Math.max(3,service.get(id).getCandidates().size()),errors);
         if(errors.hasErrors()){response.setStatus(422);return "form";}
         try{service.update(id,form);}
         catch(PlanService.StalePlanException | OptimisticLockingFailureException e){
@@ -82,6 +84,11 @@ public class PlanController {
         redirect.addFlashAttribute("saved",true);return "redirect:/p/"+id;
     }
     @GetMapping("/healthz") @ResponseBody String health(){return "ok";}
+
+    private void validateCandidateCount(PlanForm form,int limit,BindingResult errors){
+        if(form.getCandidates()!=null && form.getCandidates().stream().filter(c->c!=null && c.getName()!=null && !c.getName().isBlank()).count()>limit)
+            errors.rejectValue("candidates","candidateLimit","새 후보는 최대 3개입니다. 기존 계획의 추가 후보는 보존할 수 있어요.");
+    }
 
     @SuppressWarnings("unchecked") private boolean owns(HttpSession session,String id){
         Object grants=session.getAttribute("ownedPlans");return grants instanceof Set<?> && ((Set<String>)grants).contains(id);

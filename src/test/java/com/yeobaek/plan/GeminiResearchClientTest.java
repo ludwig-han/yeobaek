@@ -51,6 +51,8 @@ class GeminiResearchClientTest {
         assertThat(requests).hasSize(2);
         assertThat(requests.get(0).has("response_format")).isFalse();
         assertThat(requests.get(1).has("tools")).isFalse();
+        assertThat(requests.get(0).path("input").asText()).contains("site:blog.naver.com","라스트오더","엘리베이터","날짜 미확인","EXACT");
+        assertThat(requests.get(1).path("response_format").path("schema").path("properties").has("sourceMetadata")).isTrue();
         assertThat(requests.toString()).doesNotContain("tool_choice","function");
         assertThat(requests.get(0).path("model").asText()).isEqualTo("gemini-3.8-flash");
         assertThat(result.path("evidence").get(0).path("text").asText()).isEqualTo("공식 관람 안내를 확인하세요.");
@@ -82,6 +84,12 @@ class GeminiResearchClientTest {
         ((ArrayNode)f.get("backups")).add(f.path("anchors").get(0).deepCopy());responses.add(response(f.toString(),false));
         ObjectNode input=mapper.createObjectNode();input.putArray("anchors").addObject().put("placeRule","EXACT");
         assertThat(client.research(input).path("backups").size()).isZero();
+    }
+    @Test void preservesConditionalBackupForReplaceableAnchorWithTwoCallsOnly() throws Exception {
+        responses.add(response("식당 임시휴무 공식 공지",true));ObjectNode f=findings();
+        ((ArrayNode)f.get("backups")).add(f.path("anchors").get(0).deepCopy());responses.add(response(f.toString(),false));
+        ObjectNode input=mapper.createObjectNode();input.putArray("anchors").addObject().put("placeRule","REPLACEABLE");
+        assertThat(client.research(input).path("backups").size()).isEqualTo(1);assertThat(requests).hasSize(2);
     }
     @Test void acceptsCitationEvidenceWithoutOtherOptionalSearchSignals() throws Exception {
         ObjectNode raw=(ObjectNode)mapper.readTree(response("한글 근거",true));

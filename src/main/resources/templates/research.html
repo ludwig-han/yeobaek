@@ -1,7 +1,7 @@
 <!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><body>
 <section th:fragment="panel" id="research" class="card" th:if="${owner}">
   <p class="eyebrow">조사원에게 맡기기</p><h2>계획 조사</h2>
-  <p class="hint">내가 정한 중요도는 그대로 두고 운영정보·위험·대안을 조사해요. 출발역과 합류 조건을 Gemini에 전달하며, 결과는 계획자만 봅니다.</p>
+  <p class="hint">운영시간과 예약, 최근 방문 후기에 나타난 불편까지 찾아봐요. 정한 장소를 우선하고, 방문이 어려울 때만 대안을 살펴요. 출발역과 합류 조건을 Gemini에 전달하며, 결과는 계획자만 봅니다.</p>
   <p th:if="${!researchAvailable}" class="notice">아직 조사가 활성화되지 않았어요. 서버의 Gemini API 키·모델·결제 설정이 필요합니다. 계획 저장과 공유는 계속 사용할 수 있어요.</p>
   <p th:if="${researchError}" class="notice error" role="alert" th:text="${researchError}"></p>
   <form method="post" th:action="@{/p/{id}/research(id=${plan.id})}"><button type="submit" data-busy-label="조사 요청 중…" th:disabled="${!researchAvailable or (run != null and run.running)}">계획 조사하기</button></form>
@@ -12,13 +12,13 @@
     <div th:if="${run.succeeded and !report.isEmpty()}">
       <p class="muted fine" th:text="${'조사 시각: ' + run.researchedAt + ' · ' + run.model}"></p>
       <p class="hint">출처 있음은 검색 근거가 있다는 뜻입니다. 운영 변경까지 보장하지 않으며, 추론·미확인은 별도로 표시합니다.</p>
-      <div th:replace="~{research :: findings('Anchor 확인', ${report.anchors}, ${report})}"></div>
+      <div th:replace="~{research :: findings('꼭 하고 싶은 것 확인', ${report.anchors}, ${report})}"></div>
       <div th:replace="~{research :: findings('위험 / 충돌', ${report.risks}, ${report})}"></div>
-      <div th:replace="~{research :: findings('Backup', ${report.backups}, ${report})}"></div>
-      <div th:replace="~{research :: findings('Priority 관련 조사', ${report.priorities}, ${report})}"></div>
+      <div th:replace="~{research :: findings('방문이 어려울 때의 대안', ${report.backups}, ${report})}"></div>
+      <div th:replace="~{research :: findings('중요한 후보 조사', ${report.priorities}, ${report})}"></div>
       <div th:replace="~{research :: findings('미확인 항목', ${report.unknown}, ${report})}"></div>
       <div th:replace="~{research :: findings('여백', ${report.flexible}, ${report})}"></div>
-      <h3>출처</h3><ol class="source-list"><li th:each="source : ${report.sources}"><a th:href="${source.url}" th:text="${source.title}" target="_blank" rel="noopener noreferrer"></a><details><summary>URL 보기</summary><small th:text="${source.url}"></small></details></li></ol>
+      <details><summary>전체 출처 목록</summary><ol class="source-list"><li th:each="source : ${report.sources}"><a th:href="${source.url}" th:text="${source.title}" target="_blank" rel="noopener noreferrer"></a><span class="source-warning" th:if="${source.old}"> · ⚠ 오래된 정보</span></li></ol></details>
       <details><summary>실제 검색어</summary><ul><li th:each="q : ${report.queries}" th:text="${q}"></li></ul></details>
       <iframe th:if="${!#strings.isEmpty(report.searchSuggestions)}" title="Google 검색 제안" class="search-suggestions" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" th:src="@{/p/{id}/research/suggestions(id=${plan.id})}"></iframe>
     </div>
@@ -28,9 +28,24 @@
   <h3 th:text="${title}"></h3><p class="hint" th:if="${#lists.isEmpty(items)}">추가 확인 내용 없음</p>
   <article class="research-item" th:each="item : ${items}"><strong th:text="${item.subject}"></strong>
     <span class="research-status" th:text="${item.state == 'SOURCED' ? ' · 출처 있음' : (item.state == 'CONFLICT' ? ' · 정보 충돌' : (item.state == 'INFERENCE' ? ' · 추론' : ' · 미확인'))}"></span>
-    <p class="preserve" th:text="${item.detail}"></p>
-    <div><a th:each="n : ${item.sourceIds}" th:href="${report.sources[n].url}" th:text="${' [출처 ' + (n + 1) + '] '}" target="_blank" rel="noopener noreferrer"></a></div>
-    <details th:if="${!#lists.isEmpty(item.evidenceIds)}"><summary>검색 근거 문장</summary><p th:each="n : ${item.evidenceIds}" th:text="${report.evidence[n].text}"></p></details>
+    <div class="claim"><span class="preserve" th:text="${item.detail}"></span>
+      <details class="footnote" th:each="n : ${item.sourceIds}" th:with="source=${report.sources[n]}">
+        <summary th:attr="aria-label=${'출처 ' + (n + 1) + ' · ' + source.title}"><span th:text="${'[' + (n + 1) + ']'}"></span><span th:if="${source.old}" class="source-warning">⚠</span></summary>
+        <div class="footnote-body">
+          <strong th:text="${source.title}"></strong>
+          <p class="source-meta"><span th:text="${source.sourceType}"></span> · <span th:text="${#strings.isEmpty(source.publishedDate) ? '게시일: 날짜 미확인' : '게시일: ' + source.publishedDate}"></span></p>
+          <p class="source-warning" th:if="${source.old}">⚠ 오래된 정보 · 조사 시점보다 180일 넘게 지난 자료입니다. 현재도 동일한지는 불확실해요.</p>
+          <p class="source-meta" th:text="${'조사 시각: ' + source.checkedAt}"></p>
+          <p class="source-meta" th:if="${#strings.isEmpty(source.promotionBasis)}">광고·협찬 표시 미확인 · 비광고를 보장하지 않습니다.</p>
+          <p class="source-meta" th:unless="${#strings.isEmpty(source.promotionBasis)}" th:text="${'명시적 홍보 표시: ' + source.promotionBasis}"></p>
+          <p class="source-meta" th:if="${!#strings.isEmpty(source.dateBasis)}" th:text="${'게시일 근거: ' + source.dateBasis}"></p>
+          <p class="source-meta" th:if="${!#strings.isEmpty(source.typeBasis)}" th:text="${'유형 근거: ' + source.typeBasis}"></p>
+          <p class="hint">이 주장에 연결된 짧은 검색 근거</p>
+          <blockquote th:each="e : ${item.evidenceIds}" th:if="${#lists.contains(report.evidence[e].sourceIds,n)}" th:text="${report.evidence[e].text}"></blockquote>
+          <a th:href="${source.url}" target="_blank" rel="noopener noreferrer">원문 열기 ↗</a>
+        </div>
+      </details>
+    </div>
   </article>
 </section>
 </body></html>

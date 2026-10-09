@@ -20,11 +20,11 @@
       const name = section.querySelector('input[name$=".name"]');
       const start = section.querySelector('input[name$=".earliest"]');
       const end = section.querySelector('input[name$=".latest"]');
-      const rule = section.querySelector('select[name$=".timeSensitive"]');
-      if (!name.value.trim()) return;
+      const rule = section.querySelector('[name$=".timeSensitive"]');
+      if (!name.value.trim() || !start || !end) return;
       if (start.value && end.value && start.validity.valid && end.validity.valid && start.value >= end.value) {
         end.setCustomValidity('종료 시각은 시작 시각보다 늦어야 해요. 같은 날의 시각을 입력해주세요.');
-      } else if (rule.value === 'FIXED_TIME' && !start.value && !end.value) {
+      } else if (rule?.value === 'FIXED_TIME' && !start.value && !end.value && !section.querySelector('[name$=".fixedTime"]')?.value) {
         start.setCustomValidity('특정 시각을 선택했어요. 시작 또는 종료 시각을 적어주세요.');
       }
     });
@@ -60,8 +60,8 @@
     input.dispatchEvent(new Event('time-cleared'));
     const section = input.closest('[data-anchor-times]');
     if (section && [...section.querySelectorAll('[data-time-input]')].every(i => !i.value)) {
-      const rule = section.querySelector('select[name$=".timeSensitive"]');
-      if (rule.value === 'FIXED_TIME') rule.value = 'UNKNOWN';
+      const rule = section.querySelector('[name$=".timeSensitive"]');
+      if (rule?.value === 'FIXED_TIME') rule.value = 'UNKNOWN';
     }
     if (input.closest('[data-return-time]')) { mode.value = 'UNKNOWN'; returnFields(); mode.focus(); }
     else input.focus();

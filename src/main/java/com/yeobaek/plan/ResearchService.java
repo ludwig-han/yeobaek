@@ -53,8 +53,14 @@ public class ResearchService {
     JsonNode snapshot(Plan p) {
         ObjectNode input=mapper.createObjectNode();input.put("title",p.getTitle());input.put("date",p.getDate().toString());input.put("region",p.getRegion());
         input.put("checkedAt",Instant.now().toString());input.set("anchors",mapper.valueToTree(p.getAnchors()));
+        input.path("anchors").forEach(n->{
+            ObjectNode anchor=(ObjectNode)n;
+            // Classification belongs to the existing search call, not to the user.
+            anchor.remove(List.of("kind","timeSensitive","backupNeeded","placeValid","timeValid","fixedTimePresent","placeEssential"));
+            if(!"EXACT".equals(anchor.path("placeRule").asText())) anchor.put("placeRule","REPLACEABLE");
+        });
         input.set("priorities",mapper.valueToTree(p.getCandidates()));input.set("guardrailAndTransport",mapper.valueToTree(p.getConstraints()));
-        input.path("priorities").forEach(n -> ((ObjectNode)n).remove("importance"));
+        input.path("priorities").forEach(n -> ((ObjectNode)n).remove(List.of("importance","kind")));
         ObjectNode conditions=(ObjectNode)input.get("guardrailAndTransport");
         conditions.remove("avoidLateReturn");
         if(p.getConstraints().getReturnMode()!=PlanDetails.ReturnMode.BY_TIME)conditions.remove("returnBy");
@@ -65,7 +71,11 @@ public class ResearchService {
     }
     public Map<String,Object> report(ResearchRun run) {
         if(!run.isSucceeded())return Map.of();
-        try{return mapper.readValue(run.getResultJson(),new com.fasterxml.jackson.core.type.TypeReference<Map<String,Object>>(){});}
+        try{
+            ObjectNode report=(ObjectNode)mapper.readTree(run.getResultJson());
+            ResearchSources.defaults(report,run.getResearchedAt());
+            return mapper.convertValue(report,new com.fasterxml.jackson.core.type.TypeReference<Map<String,Object>>(){});
+        }
         catch(Exception e){return Map.of();}
     }
     @PreDestroy void shutdown(){worker.shutdownNow();}

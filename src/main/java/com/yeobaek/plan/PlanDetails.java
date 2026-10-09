@@ -44,6 +44,8 @@ public final class PlanDetails {
         @Column(name="time_sensitive", length=30) @Enumerated(EnumType.STRING) @NotNull private TimeRule timeSensitive=TimeRule.UNKNOWN;
         @Column(name="earliest") @DateTimeFormat(pattern="HH:mm")  private LocalTime earliest=null;
         @Column(name="latest") @DateTimeFormat(pattern="HH:mm")  private LocalTime latest=null;
+        @Column(name="fixed_time") @DateTimeFormat(pattern="HH:mm") private LocalTime fixedTime=null;
+        @Transient private Boolean essentialChoice;
         @Column(name="stay_important", length=30) @Enumerated(EnumType.STRING) @NotNull private Choice stayImportant=Choice.UNKNOWN;
         @Column(name="stay_minutes") @Min(10) @Max(720) private Integer stayMinutes=null;
         @Column(name="backup_needed", length=30) @Enumerated(EnumType.STRING) @NotNull private Choice backupNeeded=Choice.UNKNOWN;
@@ -53,10 +55,11 @@ public final class PlanDetails {
             this.name=other.name;
             this.kind=other.kind;
             this.place=other.place;
-            this.placeRule=other.placeRule;
+            this.placeRule=other.getPlaceRule();
             this.timeSensitive=other.timeSensitive;
             this.earliest=other.earliest;
             this.latest=other.latest;
+            this.fixedTime=other.fixedTime;
             this.stayImportant=other.stayImportant;
             this.stayMinutes=other.stayMinutes;
             this.backupNeeded=other.backupNeeded;
@@ -65,20 +68,24 @@ public final class PlanDetails {
         public String getName(){return name;} public void setName(String value){name=value;}
         public Kind getKind(){return kind;} public void setKind(Kind value){kind=value;}
         public String getPlace(){return place;} public void setPlace(String value){place=value;}
-        public PlaceRule getPlaceRule(){return placeRule;} public void setPlaceRule(PlaceRule value){placeRule=value;}
+        public PlaceRule getPlaceRule(){return essentialChoice==null ? placeRule : essentialChoice ? PlaceRule.EXACT : placeRule==PlaceRule.EXACT ? PlaceRule.REPLACEABLE : placeRule;}
+        public void setPlaceRule(PlaceRule value){placeRule=value;}
         public TimeRule getTimeSensitive(){return timeSensitive;} public void setTimeSensitive(TimeRule value){timeSensitive=value;}
         public LocalTime getEarliest(){return earliest;} public void setEarliest(LocalTime value){earliest=value;}
         public LocalTime getLatest(){return latest;} public void setLatest(LocalTime value){latest=value;}
+        public LocalTime getFixedTime(){return fixedTime;} public void setFixedTime(LocalTime value){fixedTime=value;}
+        public boolean isPlaceEssential(){return getPlaceRule()==PlaceRule.EXACT;}
+        public void setPlaceEssential(boolean value){essentialChoice=value;}
         public Choice getStayImportant(){return stayImportant;} public void setStayImportant(Choice value){stayImportant=value;}
         public Integer getStayMinutes(){return stayMinutes;} public void setStayMinutes(Integer value){stayMinutes=value;}
         public Choice getBackupNeeded(){return backupNeeded;} public void setBackupNeeded(Choice value){backupNeeded=value;}
         public String getNote(){return note;} public void setNote(String value){note=value;}
         @AssertTrue(message="필수 장소의 이름을 적어주세요.")
-        public boolean isPlaceValid(){return name==null || name.isBlank() || placeRule!=PlaceRule.EXACT || (place!=null && !place.isBlank());}
+        public boolean isPlaceValid(){return name==null || name.isBlank() || getPlaceRule()!=PlaceRule.EXACT || (place!=null && !place.isBlank());}
         @AssertTrue(message="목표의 종료 시각은 시작 시각보다 늦어야 합니다. 같은 날의 24시간제로 입력해주세요.")
         public boolean isTimeValid(){return name==null || name.isBlank() || earliest==null || latest==null || earliest.isBefore(latest);}
         @AssertTrue(message="특정 시각을 선택한 목표에는 시작 또는 종료 시각을 입력해주세요.")
-        public boolean isFixedTimePresent(){return name==null || name.isBlank() || timeSensitive!=TimeRule.FIXED_TIME || earliest!=null || latest!=null;}
+        public boolean isFixedTimePresent(){return name==null || name.isBlank() || timeSensitive!=TimeRule.FIXED_TIME || earliest!=null || latest!=null || fixedTime!=null;}
     }
     @Embeddable
     public static class Candidate {

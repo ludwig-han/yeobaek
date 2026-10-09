@@ -34,6 +34,29 @@ class ResearchFlowTest {
             .param("participants[0].label","비공개 이름").param("participants[0].origin","비공개 출발역").param("transport","기존 비공개 메모"))
             .andExpect(status().is3xxRedirection()).andReturn().getResponse().getRedirectedUrl();
     }
+    @Test void rendersClaimFootnotesWithDatesDisclosureAndOldWarning() throws Exception {
+        MockHttpSession owner=new MockHttpSession();String path=create(owner);
+        ObjectNode report=mapper.createObjectNode();
+        for(String name:new String[]{"anchors","risks","backups","priorities","unknown","flexible","sources","evidence","queries"})report.putArray(name);
+        report.put("searchSuggestions","");
+        ObjectNode source=((ArrayNode)report.get("sources")).addObject().put("url","https://blog.naver.com/example")
+            .put("title","테스트 방문 후기").put("sourceType","네이버 블로그").put("publishedDate","2025-01-01")
+            .put("checkedAt","2026-10-09T00:00:00Z").put("promotionBasis","식사를 제공받았습니다.")
+            .put("dateBasis","게시일: 2025-01-01").put("typeBasis","").put("old",true);
+        ((ArrayNode)report.get("evidence")).addObject().put("text","테스트 근거: 출입구 앞에 계단이 있음.").putArray("sourceIds").add(0);
+        ObjectNode item=((ArrayNode)report.get("risks")).addObject().put("subject","접근성 확인 · 테스트 자료")
+            .put("detail","계단이 있다는 오래된 후기만 확인되어 현재도 동일한지는 불확실합니다.").put("state","UNVERIFIED");
+        item.putArray("sourceIds").add(0);item.putArray("evidenceIds").add(0);
+        ResearchRun run=new ResearchRun(plans.get(path.substring(3)),"test-model");run.succeed(mapper.writeValueAsString(report));runs.saveAndFlush(run);
+        String html=mvc.perform(get(path).session(owner)).andExpect(status().isOk())
+            .andExpect(content().string(containsString("[1]")))
+            .andExpect(content().string(containsString("게시일: 2025-01-01")))
+            .andExpect(content().string(containsString("⚠ 오래된 정보")))
+            .andExpect(content().string(containsString("명시적 홍보 표시: 식사를 제공받았습니다.")))
+            .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        java.nio.file.Files.writeString(java.nio.file.Path.of("target/v02-report-preview.html"),html);
+        mvc.perform(get(path+"/share")).andExpect(content().string(not(containsString("테스트 방문 후기"))));
+    }
     @Test void authorizesResearchStoresResultMarksStaleAndNeverLeaksOnShare() throws Exception {
         ObjectNode report=mapper.createObjectNode();
         for(String name:new String[]{"anchors","risks","backups","priorities","unknown","flexible","sources","evidence","queries"})report.putArray(name);
@@ -56,6 +79,10 @@ class ResearchFlowTest {
         assertThat(persisted.isStale(plans.get(id))).isFalse();
         mvc.perform(get(path).session(owner)).andExpect(status().isOk()).andExpect(content().string(containsString("비공개 출발역 관련 조사")))
             .andExpect(content().string(containsString("https://www.swcf.or.kr/?p=65")))
+            .andExpect(content().string(containsString("class=\"footnote\"")))
+            .andExpect(content().string(containsString("게시일: 날짜 미확인")))
+            .andExpect(content().string(containsString("광고·협찬 표시 미확인")))
+            .andExpect(content().string(containsString("공식 안내 근거")))
             .andExpect(content().string(not(containsString("<script>alert(1)</script>"))));
         mvc.perform(get(path+"/share").session(owner)).andExpect(status().isOk()).andExpect(content().string(not(containsString("비공개 출발역"))));
         mvc.perform(get(path)).andExpect(content().string(not(containsString("비공개 출발역"))));
@@ -66,6 +93,10 @@ class ResearchFlowTest {
         assertThat(run.getPlanVersion()).isZero();
         JsonNode input=research.snapshot(plans.get(id));
         assertThat(input.toString()).contains("비공개 출발역").doesNotContain("비공개 이름","기존 비공개 메모","editKeyHash");
+        assertThat(input.path("anchors").get(0).path("placeRule").asText()).isEqualTo("REPLACEABLE");
+        assertThat(input.path("anchors").get(0).has("timeSensitive")).isFalse();
+        assertThat(input.path("anchors").get(0).has("kind")).isFalse();
+        assertThat(input.path("anchors").get(0).has("backupNeeded")).isFalse();
         mvc.perform(post(path+"/research").session(owner).with(csrf())).andExpect(flash().attributeExists("researchError"));
         verify(client,times(1)).research(any());
     }
