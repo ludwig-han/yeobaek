@@ -16,7 +16,8 @@ public class PlanForm {
     @Valid @NotNull @Size(max=6) private List<Candidate> candidates=new ArrayList<>();
     @Valid @NotNull @Size(max=4) private List<Participant> participants=new ArrayList<>();
     @Valid @NotNull private Constraints constraints=new Constraints();
-    public PlanForm(){ for(int i=0;i<3;i++)candidates.add(new Candidate()); for(int i=0;i<4;i++)participants.add(new Participant()); }
+    public PlanForm(){ for(int i=0;i<3;i++)candidates.add(new Candidate()); for(int i=0;i<4;i++)participants.add(defaultParticipant(i)); }
+    private static Participant defaultParticipant(int index){Participant p=new Participant();p.setLabel(String.valueOf((char)('A'+index)));return p;}
     public List<Anchor> getAnchors(){return anchors;} public void setAnchors(List<Anchor> value){anchors=value;}
     public List<Candidate> getCandidates(){return candidates;} public void setCandidates(List<Candidate> value){candidates=value;}
     public List<Participant> getParticipants(){return participants;} public void setParticipants(List<Participant> value){participants=value;}
@@ -49,7 +50,8 @@ public class PlanForm {
         PlanForm f=new PlanForm(); f.title=p.getTitle(); f.date=p.getDate(); f.region=p.getRegion();
         f.anchors.clear();p.getAnchors().forEach(a->f.anchors.add(new Anchor(a)));while(f.anchors.size()<2)f.anchors.add(new Anchor());
         f.candidates.clear();p.getCandidates().forEach(a->f.candidates.add(new Candidate(a)));while(f.candidates.size()<3)f.candidates.add(new Candidate());
-        f.participants.clear();p.getParticipants().forEach(a->f.participants.add(new Participant(a)));while(f.participants.size()<4)f.participants.add(new Participant());
+        f.participants.clear();p.getParticipants().forEach(a->f.participants.add(new Participant(a)));while(f.participants.size()<4)f.participants.add(defaultParticipant(f.participants.size()));
+        for(int i=0;i<f.participants.size();i++)if(f.participants.get(i).getLabel()==null || f.participants.get(i).getLabel().isBlank())f.participants.get(i).setLabel(String.valueOf((char)('A'+i)));
         f.constraints=new Constraints(p.getConstraints()); f.meeting=p.getMeeting();
         f.transport=p.getTransport(); f.priorities=p.getPriorities(); f.guardrails=p.getGuardrails();
         f.backup=p.getBackup(); f.flexible=p.getFlexible(); f.version=p.getVersion(); return f;

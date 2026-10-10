@@ -39,7 +39,7 @@ public class Plan {
         constraints=new Constraints(f.getConstraints());
         anchors.clear(); f.getAnchors().stream().filter(a -> a.getName()!=null && !a.getName().isBlank()).forEach(a -> anchors.add(new Anchor(a)));
         candidates.clear(); f.getCandidates().stream().filter(a -> a.getName()!=null && !a.getName().isBlank()).forEach(a -> candidates.add(new Candidate(a)));
-        participants.clear(); f.getParticipants().stream().filter(a -> (a.getOrigin()!=null && !a.getOrigin().isBlank()) || (a.getLabel()!=null && !a.getLabel().isBlank())).forEach(a -> participants.add(new Participant(a)));
+        participants.clear(); f.getParticipants().stream().filter(a -> (a.getOrigin()!=null && !a.getOrigin().isBlank()) || (a.getLabel()!=null && !a.getLabel().isBlank() && !a.getLabel().matches("[A-D]"))).forEach(a -> participants.add(new Participant(a)));
         title=clean(f.getTitle()); date=f.getDate(); region=clean(f.getRegion());
         anchor1=clean(f.getAnchor1());anchor2=clean(f.getAnchor2());meeting=clean(f.getMeeting());
         transport=clean(f.getTransport());priorities=clean(f.getPriorities());guardrails=clean(f.getGuardrails());

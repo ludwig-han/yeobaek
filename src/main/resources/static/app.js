@@ -1,4 +1,29 @@
 'use strict';
+// One small dialog for every citation. Without JS, links still open the source.
+(() => {
+  const popup=document.getElementById('source-popup');
+  if(!popup || typeof popup.showModal!=='function')return;
+  let trigger;
+  document.querySelectorAll('a.citation').forEach(link=>{
+    link.setAttribute('aria-haspopup','dialog');
+    link.addEventListener('click',event=>{
+      if(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)return;
+      event.preventDefault();trigger=link;
+      const source=popup.querySelector('[data-source-link]');
+      source.href=link.href;source.textContent=(link.dataset.sourceTitle || '출처')+' ↗';
+      const context=popup.querySelector('[data-source-context]');
+      context.textContent=[link.dataset.sourceDate ? link.dataset.sourceDate+' 작성 기준' : '',link.dataset.sourceOld==='true' ? '⚠ 오래된 정보' : ''].filter(Boolean).join(' · ');
+      context.hidden=!context.textContent;
+      popup.showModal();source.focus();
+    });
+  });
+  popup.querySelector('[data-close-source]').addEventListener('click',()=>popup.close());
+  popup.addEventListener('click',event=>{
+    const rect=popup.getBoundingClientRect();
+    if(event.target===popup && (event.clientX<rect.left || event.clientX>rect.right || event.clientY<rect.top || event.clientY>rect.bottom))popup.close();
+  });
+  popup.addEventListener('close',()=>trigger?.focus());
+})();
 async function copyValue(value, button) {
   try {
     await navigator.clipboard.writeText(value);

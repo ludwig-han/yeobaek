@@ -74,6 +74,7 @@ public class ResearchService {
         try{
             ObjectNode report=(ObjectNode)mapper.readTree(run.getResultJson());
             ResearchSources.defaults(report,run.getResearchedAt());
+            ResearchPresentation.prepare(report);
             return mapper.convertValue(report,new com.fasterxml.jackson.core.type.TypeReference<Map<String,Object>>(){});
         }
         catch(Exception e){return Map.of();}

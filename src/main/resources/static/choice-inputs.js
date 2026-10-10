@@ -57,7 +57,6 @@
   choices(field('constraints.budgetPerPerson'), '1인 하루 예산', [['30000','3만 원'],['50000','5만 원'],['100000','10만 원'],['150000','15만 원']]);
   choices(field('constraints.walkingNote'), '걷기에 대해 더 정할까요?', [
     ['한 번에 20분 이내로 걷고 싶어요','한 번에 20분 이내'],['하루 1만 보 이내로 걷고 싶어요','하루 1만 보 이내'],['중간중간 쉬고 싶어요','중간중간 쉬기']]);
-  choices(field('flexible'), '현장에서 정할 것', [['카페·산책은 현장에서 정하기','카페·산책'],['식사 장소는 현장에서 정하기','식사 장소'],['세세한 동선은 현장에서 정하기','세세한 동선']], '아직 정하지 않음');
   const times = [];
   for (let h=0;h<24;h++) for (const m of ['00','30']) {
     const t=String(h).padStart(2,'0')+':'+m; times.push([t,t]);
@@ -77,7 +76,7 @@
     return details;
   }
   const hasValue = node => [...node.querySelectorAll('input:not([type="hidden"]),textarea,select:not([data-choice-for])')]
-    .some(input => input.type==='checkbox' ? input.checked : input.value && input.value!=='UNKNOWN');
+    .some(input => input.type==='checkbox' ? input.checked : input.value && input.value!=='UNKNOWN' && !(input.hasAttribute('data-participant-label') && input.value===input.dataset.defaultLabel));
   const second=form.querySelectorAll('[data-anchor-times]')[1];
   if(second) collapseContents(second,'중요한 것 하나 더 · 선택',hasValue(second));
   form.querySelectorAll('[data-optional-section]').forEach(section=>{

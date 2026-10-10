@@ -45,6 +45,23 @@ class GeminiResearchClientTest {
         ((ArrayNode)out.get("anchors")).addObject().put("subject","화성행궁").put("detail","관람 안내 확인")
             .put("state","SOURCED").put("anchorIndex",0).putArray("evidenceIds").add(0);return out;
     }
+    @Test void linksEachClauseToItsOwnEvidenceAndHighlightsOnlyExistingClaims() {
+        ArrayNode sources=mapper.createArrayNode();sources.addObject().put("url","https://example.org/location");sources.addObject().put("url","https://example.org/parking");
+        ArrayNode evidence=mapper.createArrayNode();evidence.addObject().put("text","복합센터 위치").putArray("sourceIds").add(0);evidence.addObject().put("text","주차 안내").putArray("sourceIds").add(1);
+        ObjectNode f=findings(),item=(ObjectNode)f.path("anchors").get(0);
+        ArrayNode claims=item.putArray("claims");claims.addObject().put("text","복합센터 안에 있으며, ").putArray("evidenceIds").add(0);
+        claims.addObject().put("text","공영주차장을 이용할 수 있습니다.").putArray("evidenceIds").add(1);
+        f.putArray("highlights").addObject().put("section","anchors").put("itemIndex",0).put("claimIndex",1);
+        ObjectNode result=client.validate(f,evidence,sources);
+        assertThat(result.path("anchors").get(0).path("claims").get(0).path("sourceIds").toString()).isEqualTo("[0]");
+        assertThat(result.path("anchors").get(0).path("claims").get(1).path("sourceIds").toString()).isEqualTo("[1]");
+        ResearchPresentation.prepare(result);
+        assertThat(result.path("summary").get(0).path("claims").get(0).path("text").asText()).isEqualTo("공영주차장을 이용할 수 있습니다.");
+        ((ObjectNode)f.path("highlights").get(0)).put("claimIndex",99);
+        assertThatThrownBy(()->client.validate(f,evidence,sources)).hasMessageContaining("핵심 요약");
+        f.remove("highlights");((ArrayNode)claims.get(0).get("evidenceIds")).add(99);
+        assertThatThrownBy(()->client.validate(f,evidence,sources)).hasMessageContaining("문장별 출처");
+    }
     @Test void performsRealSearchContractThenExtractsOnlyItsEvidence() throws Exception {
         responses.add(response("공식 관람 안내를 확인하세요.",true));responses.add(response(findings().toString(),false));
         JsonNode result=client.research(mapper.createObjectNode());

@@ -10,6 +10,7 @@
   <div class="heading"><p class="eyebrow"><span th:text="${plan.date}"></span><span th:if="${!#strings.isEmpty(plan.region)}" th:text="${' · ' + plan.region}"></span></p><h1 th:text="${plan.title}"></h1><p class="muted">중요한 것만 챙기고, 나머지는 흘러가는 대로.</p></div>
   <div class="actions"><button type="button" th:attr="data-share-path=@{/p/{id}/share(id=${plan.id})}">공유 링크 복사</button><a th:if="${owner}" class="button secondary" th:href="@{/p/{id}/edit(id=${plan.id})}">계획 수정</a><a th:if="${owner}" class="text-link" th:href="@{/p/{id}/share(id=${plan.id})}">동행자 화면 보기</a></div>
   <div id="copy-status" role="status" aria-live="polite"></div><div id="copy-fallback" class="notice" hidden><label for="copy-value">아래 내용을 선택해 복사해주세요.</label><input id="copy-value" readonly></div>
+  <div th:if="${owner}" th:replace="~{research :: panel}"></div>
   <section class="card meeting"><p class="eyebrow">우리, 여기서 만나요</p><p class="preserve" th:text="${#strings.isEmpty(plan.meeting) ? '만나는 시간과 장소는 아직 정하지 않았어요.' : plan.meeting}"></p></section>
   <section class="card anchors"><div class="section-label">★ <h2>오늘의 핵심</h2></div><article th:each="a : ${plan.anchors}"><p class="anchor-item" th:text="${a.name}"></p><ul class="facts"><li th:if="${a.placeEssential}">이 장소 자체가 중요해요</li><li th:if="${!#strings.isEmpty(a.place)}" th:text="${a.place}"></li><li th:if="${a.stayImportant.name() != 'UNKNOWN'}" th:text="${'기존 체류 조건: ' + a.stayImportant.label}"></li><li th:if="${a.stayMinutes != null}" th:text="${a.stayMinutes + '분 이상'}"></li></ul><p th:if="${a.fixedTime != null}" th:text="${'정해진 시각 · ' + a.fixedTime}"></p><p th:if="${a.earliest != null or a.latest != null}" th:text="${(a.earliest ?: '미정') + ' ~ ' + (a.latest ?: '미정')}"></p><p th:if="${!#strings.isEmpty(a.note)}" th:text="${a.note}"></p></article></section>
   <section class="card" th:if="${!plan.candidates.isEmpty()}"><h2>중요한 후보들</h2><article th:each="c : ${plan.candidates}"><h3 th:text="${c.name}"></h3><p th:if="${!#strings.isEmpty(c.note)}" th:text="${c.note}"></p></article></section>
@@ -19,8 +20,8 @@
   <section th:if="${owner and !#strings.isEmpty(plan.transport)}" class="card"><div class="section-label">↔ <h2>각자의 이동 검토</h2></div><p class="hint">계획자만 볼 수 있어요.</p><p class="preserve" th:text="${plan.transport}"></p></section>
   <details class="card" th:if="${!#strings.isEmpty(plan.guardrails)}" th:open="${owner}"><summary>! &nbsp; 놓치면 곤란한 것</summary><p class="preserve" th:text="${plan.guardrails}"></p></details>
   <details class="card" th:if="${!#strings.isEmpty(plan.backup)}" th:open="${owner}"><summary>↪ &nbsp; 안 되면, 이렇게</summary><p class="preserve" th:text="${plan.backup}"></p></details>
-  <section class="card flexible"><div class="section-label">~ <h2>남겨둔 여백</h2></div><p class="preserve" th:text="${#strings.isEmpty(plan.flexible) ? '나머지는 현장에서 정해요.' : plan.flexible}"></p></section>
-  <div th:if="${owner}" th:replace="~{research :: panel}"></div>
+  <details class="card" th:if="${!#strings.isEmpty(plan.flexible)}"><summary>기존에 남긴 메모</summary><p class="preserve" th:text="${plan.flexible}"></p></details>
+  
   <p class="muted fine">사용자가 적은 메모는 자동 확인된 정보가 아닙니다. 조사 결과는 출처·시각을 함께 확인해주세요.</p>
   <div class="bottom-links"><a th:unless="${owner}" th:href="@{/p/{id}/edit(id=${plan.id})}">수정 키로 열기</a><a href="/">새 계획 만들기</a></div>
 </main><footer>계획에 없던 좋은 순간도, 좋은 하루의 일부.</footer></body></html>

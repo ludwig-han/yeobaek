@@ -21,6 +21,24 @@ class PlanFlowTest {
     @Autowired PlanService service;
     @Autowired PlanRepository repository;
 
+    @Test void participantDefaultsDoNotCreatePhantomPeopleAndNicknamesPersist() throws Exception {
+        PlanForm form=new PlanForm();
+        assertThat(form.getParticipants()).extracting(PlanDetails.Participant::getLabel).containsExactly("A","B","C","D");
+        MockHttpSession owner=new MockHttpSession();MvcResult empty=create(owner);
+        assertThat(service.get(id(empty)).getParticipants()).isEmpty();
+        MvcResult named=mvc.perform(validPost("/plans").session(owner).param("participants[0].origin","수원역")
+            .param("participants[1].label","친구").param("participants[1].origin","서울역"))
+            .andExpect(status().is3xxRedirection()).andReturn();
+        assertThat(service.get(id(named)).getParticipants()).extracting(PlanDetails.Participant::getLabel).containsExactly("A","친구");
+        mvc.perform(get(path(named)+"/edit").session(owner)).andExpect(content().string(containsString("value=\"친구\"")));
+        mvc.perform(get("/")).andExpect(content().string(not(containsString("남겨둘 여백"))))
+            .andExpect(content().string(containsString("value=\"D\"")));
+        mvc.perform(get(path(empty))).andExpect(content().string(not(containsString("남겨둔 여백"))));
+        PlanForm legacy=PlanForm.suwon();var plan=service.create(legacy).plan();
+        PlanForm edit=PlanForm.from(service.get(plan.getId()));service.update(plan.getId(),edit);
+        assertThat(service.get(plan.getId()).getFlexible()).isEqualTo(legacy.getFlexible());
+    }
+
     @Test void v02FixedTimeAndEssentialPlacePersistWithoutClassification() throws Exception {
         MockHttpSession owner=new MockHttpSession();
         MvcResult r=mvc.perform(validPost("/plans").session(owner).param("anchors[0].place","예약한 식당")

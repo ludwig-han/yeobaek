@@ -75,6 +75,13 @@ public class GeminiResearchClient {
         String extraction="""
             다음 조사 자료만 구조화한다. 새 사실/URL/장소를 추가하거나 사용자 결정을 바꾸지 않는다.
             JSON의 각 항목은 subject, detail, state, evidenceIds, anchorIndex를 가진다.
+            각 항목에는 claims 배열도 담는다. claim은 text와 evidenceIds를 가지며 text는 짧은 문장 또는 절 하나다.
+            예: '복합센터 안에 있으며'와 ', 공영주차장을 이용할 수 있습니다'는 각자 뒷받침하는 근거 ID를 따로 연결한다.
+            각주는 각 claim 직후에 표시된다. 본문에 [1] 같은 출처 번호나 HTML을 직접 쓰지 않는다. 연결 조사나 문장부호는 해당 text에 포함한다.
+            detail은 claims.text를 순서대로 이어 쓴 동일한 내용이고 evidenceIds는 claim 근거 ID의 합집합이다. claims는 1~8개, 각 text는 500자 이내.
+            highlights는 가장 중요한 핵심 1~3개를 순서대로 가리키는 참조 배열이다: section(anchors/risks/unknown), itemIndex, claimIndex(모두 0부터).
+            각 Anchor의 성공에 필요한 결론·예약/입장 마감·치명적 위험을 먼저 선택하고 일반 위치 소개나 부차적 후보는 제외한다. Anchor가 둘이면 둘 다 다룬다.
+            요약으로 선택할 claim은 150자 이내로 간결하게 작성한다. 요약을 위해 새 사실을 추가하지 않는다.
             anchorIndex는 관련 Anchor의 0부터 시작하는 번호이며 관련이 없으면 -1. Backup에는 해당 Anchor 번호가 필수다.
             state는 SOURCED(출처 근거 있음), INFERENCE(추론), CONFLICT(정보 충돌), UNVERIFIED(미확인) 중 하나.
             evidenceIds는 제공된 evidence의 id만 사용. SOURCED/CONFLICT의 최신 사실은 반드시 직접 뒷받침하는 evidence가 있어야 한다.
@@ -87,7 +94,7 @@ public class GeminiResearchClient {
             공식 유형은 공식이라고 명시된 근거가 있어야 한다. 홍보는 협찬/제공/원고료의 실제 표시만 짧게 발췌한다. 표시를 못 찾았다고 비광고로 판단하지 않는다.
             180일 넘은 후기 또는 날짜 미확인 자료만으로 현재 상태를 확정하지 않는다. 오래된 후기뿐이면 detail에 현재 동일한지 불확실하다고 쓰고 UNVERIFIED로 둔다.
             anchors/risks/backups/priorities/unknown/flexible 모두 배열로 반환하고 각각 최대 8항목, detail은 500자 이내.
-            모든 Anchor와 Priority를 다루되 확인 못한 항목은 unknown에 남긴다. 빈 여백을 일정으로 채우지 않는다.
+            모든 Anchor와 Priority를 다루되 확인 못한 항목은 unknown에 남긴다. 빈 여백을 일정으로 채우지 않는다. flexible은 빈 배열로 둔다.
             """;
         ObjectNode second=request(extraction+"\n계획:"+input+"\n조사:"+text(investigation)+"\n근거:"+evidence+"\n출처:"+sources);
         second.putObject("response_format").put("type","text").put("mime_type","application/json").set("schema",schema());
@@ -132,9 +139,41 @@ public class GeminiResearchClient {
                 ObjectNode finding=out.addObject().put("subject",subject).put("detail",detail).put("state",state)
                     .put("anchorIndex",item.path("anchorIndex").asInt(-1));
                 finding.set("sourceIds",sourceIds);finding.set("evidenceIds",evidenceIds);
+                if(item.has("claims")) {
+                    JsonNode claims=item.path("claims");
+                    if(!claims.isArray() || claims.isEmpty() || claims.size()>8)throw new ResearchFailure("문장별 근거 형식이 올바르지 않습니다.");
+                    ArrayNode checked=finding.putArray("claims");StringBuilder combined=new StringBuilder();
+                    Set<Integer> allEvidence=new LinkedHashSet<>(),allSources=new LinkedHashSet<>();
+                    for(JsonNode claim:claims) {
+                        String text=claim.path("text").asText();JsonNode ids=claim.path("evidenceIds");
+                        if(text.isBlank() || text.length()>500 || !ids.isArray())throw new ResearchFailure("문장별 근거 형식이 올바르지 않습니다.");
+                        ObjectNode c=checked.addObject().put("text",text);ArrayNode cids=c.putArray("sourceIds"),eids=c.putArray("evidenceIds");Set<Integer> uniqueSources=new LinkedHashSet<>();
+                        for(JsonNode id:ids) {
+                            if(!id.isIntegralNumber() || id.asInt()<0 || id.asInt()>=evidence.size())throw new ResearchFailure("문장별 출처 연결이 잘못되었습니다.");
+                            eids.add(id.asInt());allEvidence.add(id.asInt());evidence.get(id.asInt()).path("sourceIds").forEach(n->uniqueSources.add(n.asInt()));
+                        }
+                        uniqueSources.forEach(cids::add);allSources.addAll(uniqueSources);combined.append(text);
+                        if(state.equals("SOURCED") && cids.isEmpty())finding.put("state","UNVERIFIED");
+                    }
+                    if(combined.length()>2000)throw new ResearchFailure("조사 문장이 너무 깁니다.");
+                    finding.put("detail",combined.toString());ArrayNode es=finding.putArray("evidenceIds"),ss=finding.putArray("sourceIds");
+                    allEvidence.forEach(es::add);allSources.forEach(ss::add);
+                    if(state.equals("CONFLICT") && ss.size()<2)finding.put("state","UNVERIFIED");
+                }
             }
         }
-        result.put("formatVersion",2);result.set("sources",sources);result.set("evidence",evidence);return result;
+        if(parsed.has("highlights")) {
+            JsonNode highlights=parsed.path("highlights");
+            if(!highlights.isArray() || highlights.size()>3)throw new ResearchFailure("핵심 요약 형식이 올바르지 않습니다.");
+            for(JsonNode ref:highlights) {
+                String section=ref.path("section").asText();JsonNode i=ref.path("itemIndex"),c=ref.path("claimIndex");
+                if(!List.of("anchors","risks","unknown").contains(section) || !i.isIntegralNumber() || !c.isIntegralNumber() ||
+                    i.asInt()<0 || i.asInt()>=result.path(section).size() || c.asInt()<0 || c.asInt()>=result.path(section).path(i.asInt()).path("claims").size())
+                    throw new ResearchFailure("핵심 요약의 근거 연결이 잘못되었습니다.");
+            }
+            result.set("highlights",highlights.deepCopy());
+        }
+        result.put("formatVersion",3);result.set("sources",sources);result.set("evidence",evidence);return result;
     }
     private ObjectNode schema() {
         ObjectNode item=mapper.createObjectNode();item.put("type","object");ObjectNode props=item.putObject("properties");
@@ -143,9 +182,16 @@ public class GeminiResearchClient {
         ObjectNode state=props.putObject("state");state.put("type","string");
         state.putArray("enum").add("SOURCED").add("INFERENCE").add("CONFLICT").add("UNVERIFIED");
         props.putObject("evidenceIds").put("type","array").putObject("items").put("type","integer");
-        item.putArray("required").add("subject").add("detail").add("state").add("evidenceIds").add("anchorIndex");
+        ObjectNode claim=props.putObject("claims").put("type","array").putObject("items");claim.put("type","object");
+        ObjectNode cp=claim.putObject("properties");cp.putObject("text").put("type","string");cp.putObject("evidenceIds").put("type","array").putObject("items").put("type","integer");
+        claim.putArray("required").add("text").add("evidenceIds");
+        item.putArray("required").add("subject").add("detail").add("state").add("evidenceIds").add("anchorIndex").add("claims");
         ObjectNode schema=mapper.createObjectNode();schema.put("type","object");ObjectNode sections=schema.putObject("properties");
         ArrayNode required=schema.putArray("required");for(String name:SECTIONS){sections.putObject(name).put("type","array").set("items",item);required.add(name);}
+        ObjectNode highlight=sections.putObject("highlights").put("type","array").putObject("items");highlight.put("type","object");ObjectNode hp=highlight.putObject("properties");
+        hp.putObject("section").put("type","string").putArray("enum").add("anchors").add("risks").add("unknown");
+        hp.putObject("itemIndex").put("type","integer");hp.putObject("claimIndex").put("type","integer");
+        highlight.putArray("required").add("section").add("itemIndex").add("claimIndex");required.add("highlights");
         ObjectNode meta=sections.putObject("sourceMetadata").put("type","array").putObject("items");meta.put("type","object");
         ObjectNode fields=meta.putObject("properties");ArrayNode mandatory=meta.putArray("required");
         for(String name:List.of("sourceId","typeEvidenceId","dateEvidenceId","promotionEvidenceId")){fields.putObject(name).put("type","integer");mandatory.add(name);}

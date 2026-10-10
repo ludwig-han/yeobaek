@@ -50,9 +50,10 @@ class ResearchFlowTest {
         ResearchRun run=new ResearchRun(plans.get(path.substring(3)),"test-model");run.succeed(mapper.writeValueAsString(report));runs.saveAndFlush(run);
         String html=mvc.perform(get(path).session(owner)).andExpect(status().isOk())
             .andExpect(content().string(containsString("[1]")))
-            .andExpect(content().string(containsString("게시일: 2025-01-01")))
+            .andExpect(content().string(containsString("data-source-date=\"2025-01-01\"")))
             .andExpect(content().string(containsString("⚠ 오래된 정보")))
-            .andExpect(content().string(containsString("명시적 홍보 표시: 식사를 제공받았습니다.")))
+            .andExpect(content().string(containsString("id=\"source-popup\"")))
+            .andExpect(content().string(containsString("핵심 요약")))
             .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
         java.nio.file.Files.writeString(java.nio.file.Path.of("target/v02-report-preview.html"),html);
         mvc.perform(get(path+"/share")).andExpect(content().string(not(containsString("테스트 방문 후기"))));
@@ -79,10 +80,8 @@ class ResearchFlowTest {
         assertThat(persisted.isStale(plans.get(id))).isFalse();
         mvc.perform(get(path).session(owner)).andExpect(status().isOk()).andExpect(content().string(containsString("비공개 출발역 관련 조사")))
             .andExpect(content().string(containsString("https://www.swcf.or.kr/?p=65")))
-            .andExpect(content().string(containsString("class=\"footnote\"")))
-            .andExpect(content().string(containsString("게시일: 날짜 미확인")))
-            .andExpect(content().string(containsString("광고·협찬 표시 미확인")))
-            .andExpect(content().string(containsString("공식 안내 근거")))
+            .andExpect(content().string(containsString("class=\"citation\"")))
+            .andExpect(content().string(not(containsString("출처 있음"))))
             .andExpect(content().string(not(containsString("<script>alert(1)</script>"))));
         mvc.perform(get(path+"/share").session(owner)).andExpect(status().isOk()).andExpect(content().string(not(containsString("비공개 출발역"))));
         mvc.perform(get(path)).andExpect(content().string(not(containsString("비공개 출발역"))));
