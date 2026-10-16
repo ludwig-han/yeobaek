@@ -57,6 +57,7 @@ public class Plan {
     public List<Candidate> getCandidates(){return candidates;}
     public List<Participant> getParticipants(){return participants;}
     public Constraints getConstraints(){return constraints;}
+    // Open-in-view is disabled; these collections must be available after the read transaction closes.
     void initializeDetails(){anchors.size();candidates.size();participants.size();}
     public Instant getUpdatedAt(){return updatedAt;} public Long getVersion(){return version;}
 }
